@@ -1,0 +1,24 @@
+# Node dependencies
+node_modules/
+
+# Vite cache
+.vite/
+vite.configTimestamp*
+
+# Build output
+dist/
+
+# Local environment variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# MacOS clutter
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
