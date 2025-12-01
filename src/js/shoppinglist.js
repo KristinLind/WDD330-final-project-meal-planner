@@ -1,8 +1,8 @@
 // src/js/shoppinglist.js 
 
 // --- Config ---
-const HEADER_PARTIAL_URL = "public/partials/header.html";
-const FOOTER_PARTIAL_URL = "public/partials/footer.html";
+const HEADER_PARTIAL_URL = "/partials/header.html";
+const FOOTER_PARTIAL_URL = "/partials/footer.html";
 
 const MEAL_PLAN_KEY = "mealPlanV1";
 const EXTRA_ITEMS_KEY = "shoppingExtraV1";

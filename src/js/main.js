@@ -1,10 +1,8 @@
 // src/js/main.js
-
 // --- CONFIG ---
 const THEMEALDB_SEARCH_URL =
     "https://www.themealdb.com/api/json/v1/1/search.php?s=";
 
-// We’ll plug Spoonacular in later like:
 // const SPOONACULAR_API_KEY = "YOUR_KEY_HERE";
 
 // --- PARTIAL LOADER ---
@@ -119,8 +117,8 @@ function renderRecipes(recipes) {
 async function init() {
     // 1. Load header + footer partials
     await Promise.all([
-        loadPartial("#site-header", "public/partials/header.html"),
-        loadPartial("#site-footer", "public/partials/footer.html"),
+        loadPartial("#site-header", "/partials/header.html"),
+        loadPartial("#site-footer", "/partials/footer.html"),
     ]);
 
     function initNavToggle() {

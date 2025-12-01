@@ -4,8 +4,8 @@
 const THEMEALDB_LOOKUP_URL =
     "https://www.themealdb.com/api/json/v1/1/lookup.php?i=";
 
-const HEADER_PARTIAL_URL = "public/partials/header.html";
-const FOOTER_PARTIAL_URL = "public/partials/footer.html";
+const HEADER_PARTIAL_URL = "/partials/header.html";
+const FOOTER_PARTIAL_URL = "/partials/footer.html";
 
 // Partial Loader ---
 async function loadPartial(selector, url) {
