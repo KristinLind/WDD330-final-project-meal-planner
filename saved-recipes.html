@@ -1,0 +1,46 @@
+<!-- saved-recipes.html -->
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Saved Recipes | Recipe & Meal Planning Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Your main stylesheet -->
+    <link rel="stylesheet" href="src/css/style.css" />
+    <!-- Favicon (same as index.html) -->
+    <link rel="icon" type="image/png" href="/public/recipes-favicon.png" />
+</head>
+
+<body>
+    <!-- Header partial -->
+    <header id="site-header"></header>
+
+    <main>
+        <section class="saved-recipes-section" id="saved-recipes-page">
+            <div class="saved-recipes-header">
+                <div>
+                    <h1>Saved Recipes</h1>
+                    <p class="small-note">
+                        Recipes you’ve bookmarked from the search and detail pages.
+                    </p>
+                </div>
+
+                <button id="clear-saved-btn" class="clear-saved-btn">
+                    Clear All Saved Recipes
+                </button>
+            </div>
+
+            <!-- This is where JS will render the cards -->
+            <section id="saved-recipes" class="recipe-list saved-recipes-grid" aria-live="polite"></section>
+        </section>
+    </main>
+
+    <!-- Footer partial -->
+    <footer id="site-footer"></footer>
+
+    <!-- Page script -->
+    <script type="module" src="src/js/savedrecipes.js"></script>
+</body>
+
+</html>

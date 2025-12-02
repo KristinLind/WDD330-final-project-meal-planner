@@ -369,6 +369,61 @@ main {
     filter: brightness(1.1);
 }
 
+.recipe-meta-tags {
+    margin-top: 0.5rem;
+}
+
+.recipe-meta-extra {
+    margin-top: 0.35rem;
+    font-size: 0.95rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.recipe-tag {
+    display: inline-block;
+    background-color: var(--secondary-accent);
+    color: #3c3c3c;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    margin-right: 0.4rem;
+    margin-bottom: 0.2rem;
+}
+
+.recipe-tag:hover {
+    background-color: var(--deep-green);
+    color: #fff;
+}
+
+/* Saved Recipes page layout tweaks */
+#saved-recipes-page {
+    margin-top: 2.5rem;
+}
+
+.saved-recipes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Put the two buttons side by side on saved page cards */
+.saved-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.saved-card-actions .btn-secondary {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+}
+
 /* Recipe Detail Card */
 .recipe-detail-card {
     background: #ffffff;

@@ -1,5 +1,4 @@
 // src/js/recipeview.js
-
 import { settings } from "../../env.mjs";
 
 // --- CONFIG / ENDPOINTS ---
@@ -12,6 +11,7 @@ const HEADER_PARTIAL_URL = "/partials/header.html";
 const FOOTER_PARTIAL_URL = "/partials/footer.html";
 
 const SAVED_RECIPES_KEY = "savedRecipesV1";
+const SHOPPING_EXTRAS_KEY = "shoppingExtrasV1";
 
 // --- Partial Loader ---
 async function loadPartial(selector, url) {
@@ -102,8 +102,10 @@ function normalizeMealDbDetail(meal) {
       ? meal.strInstructions.replace(/\r\n/g, "<br>")
       : "",
     ingredients: buildMealDbIngredients(meal),
-    // MealDB doesn’t give us full nutrition, so this stays empty
     nutrition: [],
+    servings: null,
+    readyInMinutes: null,
+    sourceUrl: "",
   };
 }
 
@@ -124,7 +126,7 @@ function buildSpoonacularIngredients(recipe) {
   });
 }
 
-// Spoonacular nutrition 
+// Spoonacular nutrition
 function buildSpoonacularNutrition(recipe) {
   const nutrients = recipe.nutrition && recipe.nutrition.nutrients;
   if (!nutrients || !nutrients.length) return [];
@@ -161,6 +163,12 @@ function normalizeSpoonacularDetail(recipe) {
         : "No instructions provided."),
     ingredients: buildSpoonacularIngredients(recipe),
     nutrition: buildSpoonacularNutrition(recipe),
+    servings: recipe.servings || null,
+    readyInMinutes: recipe.readyInMinutes || null,
+    sourceUrl:
+      recipe.sourceUrl ||
+      recipe.spoonacularSourceUrl ||
+      "",
   };
 }
 
@@ -213,7 +221,7 @@ function loadSavedRecipes() {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    console.error("[main] error reading saved recipes", e);
+    console.error("[recipe-detail] error reading saved recipes", e);
     return [];
   }
 }
@@ -225,6 +233,44 @@ function saveSavedRecipes(list) {
     console.error("[recipe-detail] error saving recipes", e);
   }
 }
+
+// --- SHOPPING LIST HELPERS ---
+
+function loadShoppingExtras() {
+  try {
+    const raw = localStorage.getItem(SHOPPING_EXTRAS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("[recipe-detail] error reading shopping extras", e);
+    return [];
+  }
+}
+
+function saveShoppingExtras(list) {
+  try {
+    localStorage.setItem(SHOPPING_EXTRAS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error("[recipe-detail] error saving shopping extras", e);
+  }
+}
+
+function addRecipeIngredientsToShoppingList(recipe) {
+  const extras = loadShoppingExtras();
+
+  const newItems = (recipe.ingredients || []).map((item) => ({
+    name: item.ingredient,
+    measure: item.measure,
+    fromRecipeId: recipe.id,
+    fromRecipeTitle: recipe.title,
+  }));
+
+  const combined = [...extras, ...newItems];
+  saveShoppingExtras(combined);
+}
+
+// --- SAVE BUTTON ---
 
 function setupSaveButton(recipe) {
   const btn = document.querySelector("#save-recipe-button");
@@ -265,11 +311,12 @@ function setupSaveButton(recipe) {
 }
 
 // --- RENDERING ---
+
 function renderRecipeDetail(recipe) {
   const container = document.querySelector("#recipe-detail");
   if (!container) return;
 
-  const ingredientsHTML = recipe.ingredients
+  const ingredientsHTML = (recipe.ingredients || [])
     .map(
       (item) => `
         <li>
@@ -308,10 +355,46 @@ function renderRecipeDetail(recipe) {
     <article class="recipe-detail-card">
       <header class="recipe-detail-header">
         <h1>${recipe.title}</h1>
-        <p class="recipe-meta">
-          ${recipe.area ? `<span>${recipe.area}</span>` : ""}
-          ${recipe.category ? `<span>${recipe.category}</span>` : ""}
-        </p>
+
+        <div class="recipe-meta recipe-meta-tags">
+          ${recipe.area
+      ? `<a class="recipe-tag" href="index.html?search=${encodeURIComponent(
+        recipe.area
+      )}">${recipe.area}</a>`
+      : ""
+    }
+          ${recipe.category
+      ? `<a class="recipe-tag" href="index.html?search=${encodeURIComponent(
+        recipe.category
+      )}">${recipe.category}</a>`
+      : ""
+    }
+        </div>
+
+        <div class="recipe-meta recipe-meta-extra">
+          ${recipe.servings
+      ? `<span><strong>Servings:</strong> ${recipe.servings}</span>`
+      : ""
+    }
+          ${recipe.readyInMinutes
+      ? `<span><strong>Ready in:</strong> ${recipe.readyInMinutes
+      } min</span>`
+      : ""
+    }
+        </div>
+
+        ${recipe.sourceUrl
+      ? `
+          <p class="recipe-source">
+            Original recipe:
+            <a href="${recipe.sourceUrl}" target="_blank" rel="noopener noreferrer">
+              View on source site
+            </a>
+          </p>
+        `
+      : ""
+    }
+
         <button
           id="save-recipe-button"
           class="btn-secondary save-recipe-button"
@@ -328,6 +411,15 @@ function renderRecipeDetail(recipe) {
 
         <section class="recipe-detail-main">
           <h2>Ingredients</h2>
+
+          <button
+            id="add-to-shopping-list"
+            class="btn-secondary add-to-shopping-btn"
+            type="button"
+          >
+            Add Ingredients to Shopping List
+          </button>
+
           <ul class="ingredients-list">
             ${ingredientsHTML}
           </ul>
@@ -347,8 +439,17 @@ function renderRecipeDetail(recipe) {
     </article>
   `;
 
-  // Wire up the Save button **after** the HTML is in the DOM
+  // Wire up the Save button
   setupSaveButton(recipe);
+
+  // Wire up "Add to shopping list" button
+  const addBtn = document.querySelector("#add-to-shopping-list");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      addRecipeIngredientsToShoppingList(recipe);
+      alert("Ingredients added to your shopping list!");
+    });
+  }
 }
 
 // --- MAIN INIT ---

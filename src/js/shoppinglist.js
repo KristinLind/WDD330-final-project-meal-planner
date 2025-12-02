@@ -65,6 +65,20 @@ function loadExtraItemsFromStorage() {
     }
 }
 
+const SHOPPING_EXTRAS_KEY = "shoppingExtrasV1";
+
+function loadShoppingExtras() {
+  try {
+    const raw = localStorage.getItem(SHOPPING_EXTRAS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+
 function saveExtraItemsToStorage(items) {
     try {
         localStorage.setItem(EXTRA_ITEMS_KEY, JSON.stringify(items));
