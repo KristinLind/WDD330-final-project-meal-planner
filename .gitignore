@@ -13,7 +13,6 @@ dist/
 .env.local
 .env.*
 !.env.example
-env.mjs
 
 # MacOS clutter
 .DS_Store
