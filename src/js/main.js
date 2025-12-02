@@ -1,9 +1,8 @@
 // src/js/main.js
-// --- CONFIG ---
-const THEMEALDB_SEARCH_URL =
-    "https://www.themealdb.com/api/json/v1/1/search.php?s=";
+import { searchRecipes } from "./recipemodel.js";
 
-// const SPOONACULAR_API_KEY = "YOUR_KEY_HERE";
+// localStorage key must match recipeview.js
+const SAVED_RECIPES_KEY = "savedRecipesV1";
 
 // --- PARTIAL LOADER ---
 async function loadPartial(selector, url) {
@@ -20,40 +19,11 @@ async function loadPartial(selector, url) {
     } catch (error) {
         console.error(error);
         container.innerHTML =
-            "<p class='error'>Sorry, we couldn’t load this section.</p>";
+            "<p class='error'>Sorry, we couldn't load this section.</p>";
     }
 }
 
-// --- API + DATA ---
-async function searchMeals(query) {
-    // If no query, show something simple like "chicken" by default
-    const searchTerm = query && query.trim() ? query.trim() : "chicken";
-    const url = THEMEALDB_SEARCH_URL + encodeURIComponent(searchTerm);
-
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error("Failed to fetch recipes from TheMealDB");
-    }
-
-    const data = await response.json();
-
-    // TheMealDB returns { meals: [...] } or { meals: null }
-    if (!data.meals) {
-        return [];
-    }
-
-    // Normalize the data - simplify
-    return data.meals.map((meal) => ({
-        id: meal.idMeal,
-        title: meal.strMeal,
-        thumbnail: meal.strMealThumb,
-        category: meal.strCategory,
-        area: meal.strArea,
-        instructions: meal.strInstructions,
-    }));
-}
-
-// --- RENDERING 
+// --- STATUS / MESSAGES ---
 function renderStatus(message, type = "info") {
     const statusEl = document.querySelector("#status");
     if (!statusEl) return;
@@ -68,6 +38,7 @@ function renderStatus(message, type = "info") {
     statusEl.className = `status-message ${type}`;
 }
 
+// --- SEARCH RESULT CARDS ---
 function renderRecipes(recipes) {
     const container = document.querySelector("#results");
     if (!container) return;
@@ -81,46 +52,132 @@ function renderRecipes(recipes) {
     const cardsHTML = recipes
         .map(
             (recipe) => `
-      <article class="recipe-card fade-in">
-        <img
-          src="${recipe.thumbnail}"
-          alt="${recipe.title}"
-          loading="lazy"
-        />
-        <div class="recipe-card-body">
-          <h2>${recipe.title}</h2>
-          <p class="recipe-meta">
-            ${recipe.area ? `<span>${recipe.area}</span>` : ""}
-            ${recipe.category ? `<span>${recipe.category}</span>` : ""}
-          </p>
-          <p class="recipe-excerpt">
-            ${recipe.instructions
+        <article class="recipe-card fade-in">
+          <img
+            src="${recipe.thumbnail}"
+            alt="${recipe.title}"
+            loading="lazy"
+          />
+          <div class="recipe-card-body">
+            <h2>${recipe.title}</h2>
+            <p class="recipe-meta">
+              ${recipe.area ? `<span>${recipe.area}</span>` : ""}
+              ${recipe.category ? `<span>${recipe.category}</span>` : ""}
+            </p>
+            <p class="recipe-excerpt">
+              ${recipe.instructions
                     ? recipe.instructions.slice(0, 120) + "..."
-                    : ""}
-          </p>
-          <a
-            href="recipe-detail.html?id=${encodeURIComponent(recipe.id)}"
-            class="btn-secondary"
-          >
-            View Details
-          </a>
-        </div>
-      </article>
-    `
+                    : ""
+                }
+            </p>
+            <a
+              href="recipe-detail.html?id=${encodeURIComponent(recipe.id)}"
+              class="btn-secondary"
+            >
+              View Details
+            </a>
+          </div>
+        </article>
+      `
         )
         .join("");
 
     container.innerHTML = cardsHTML;
 }
 
+// --- SAVED RECIPES HELPERS ---
+function loadSavedRecipes() {
+    try {
+        const raw = localStorage.getItem(SAVED_RECIPES_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        console.error("[main] error reading saved recipes", e);
+        return [];
+    }
+}
+
+function renderSavedRecipes() {
+    const section = document.querySelector("#saved-recipes");
+    if (!section) return;
+
+    const saved = loadSavedRecipes();
+    console.log("[home] saved recipes from storage:", saved);
+
+    if (!saved.length) {
+        section.innerHTML = `
+      <h2>Your Saved Recipes</h2>
+      <p class="small-note">
+        You haven't saved any recipes yet.
+        Open a recipe detail and click <strong>"Save Recipe"</strong> to add it here.
+      </p>
+    `;
+        return;
+    }
+
+    const cardsHTML = saved
+        .map(
+            (recipe) => `
+        <article class="recipe-card saved-recipe-card">
+          <img
+            src="${recipe.image}" || recipe.thumbnail || ""}"
+            alt="${recipe.title}"
+            loading="lazy"
+          />
+          <div class="recipe-card-body">
+            <h2>${recipe.title}</h2>
+            <p class="recipe-meta">
+              ${recipe.area ? `<span>${recipe.area}</span>` : ""}
+              ${recipe.category ? `<span>${recipe.category}</span>` : ""}
+            </p>
+            <a
+              href="recipe-detail.html?id=${encodeURIComponent(recipe.id)}"
+              class="btn-secondary"
+            >
+              View Details
+            </a>
+          </div>
+        </article>
+      `
+        )
+        .join("");
+
+    section.innerHTML = `
+    <div class="saved-recipes-header">
+      <h2>Saved Recipes</h2>
+      <button id="clear-saved-btn" class="clear-saved-btn">
+        Clear All Saved Recipes
+      </button>
+    </div>
+    <div class="recipe-list saved-recipes-grid">
+      ${cardsHTML}
+    </div>
+  `;
+    
+    // attach clear button handler every time we re-render
+    const clearBtn = section.querySelector("#clear-saved-btn");
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            if (!confirm("Delete all saved recipes?")) return;
+
+            localStorage.removeItem(SAVED_RECIPES_KEY);
+            renderSavedRecipes(); // re-render as “empty”
+        });
+    }
+}
+
 // -- MAIN INIT --
 async function init() {
+    console.log("[main] main.js loaded");
+
     // 1. Load header + footer partials
     await Promise.all([
         loadPartial("#site-header", "/partials/header.html"),
         loadPartial("#site-footer", "/partials/footer.html"),
     ]);
 
+    // 2. Initialize mobile nav
     function initNavToggle() {
         const toggle = document.querySelector(".nav-toggle");
         const nav = document.querySelector(".site-nav");
@@ -135,7 +192,12 @@ async function init() {
 
     initNavToggle();
 
-    // 2. Wire up search form
+    console.log("[main] init() starting");
+
+    // 3. Show any saved recipes
+    renderSavedRecipes();
+    
+    // 4. Search form
     const form = document.querySelector("#search-form");
     const input = document.querySelector("#search-input");
 
@@ -146,11 +208,19 @@ async function init() {
 
             try {
                 renderStatus("Searching recipes…", "loading");
-                const recipes = await searchMeals(query);
-                renderRecipes(recipes);
+
+                const { mealDb, spoonacular } = await searchRecipes(query);
+
+                console.log("[Search MealDB]", mealDb);
+                console.log("[Search Spoonacular]", spoonacular);
+
+                const combined = [...mealDb, ...spoonacular];
+
+                renderRecipes(combined);
+
                 renderStatus(
-                    recipes.length
-                        ? `Showing ${recipes.length} result(s) for "${query || "chicken"}".`
+                    combined.length
+                        ? `Showing ${combined.length} result(s) for "${query || "chicken"}".`
                         : `No results found for "${query}".`,
                     "info"
                 );
@@ -164,11 +234,14 @@ async function init() {
         });
     }
 
-    // 3. Initial load: show default recipes (e.g., chicken)
+    // 5. Initial load: show default recipes (chicken)
     try {
         renderStatus("Loading recipes…", "loading");
-        const initialRecipes = await searchMeals("chicken");
-        renderRecipes(initialRecipes);
+        const { mealDb, spoonacular } = await searchRecipes("chicken");
+        console.log("[Initial MealDB]", mealDb);
+        console.log("[Initial Spoonacular]", spoonacular);
+        const combined = [...mealDb, ...spoonacular];
+        renderRecipes(combined);
         renderStatus('Showing results for "chicken".', "info");
     } catch (error) {
         console.error(error);
@@ -180,3 +253,4 @@ async function init() {
 }
 
 init();
+
