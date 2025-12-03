@@ -319,14 +319,14 @@ function renderRecipeDetail(recipe) {
   const ingredientsHTML = (recipe.ingredients || [])
     .map(
       (item) => `
-        <li>
-          <span class="ingredient-name">${item.ingredient}</span>
-          ${item.measure
-          ? `<span class="ingredient-measure">${item.measure}</span>`
-          : ""
+      <li class="ingredient-line">
+        ${item.measure
+          ? `<span class="ingredient-amount">${item.measure}</span>`
+          : `<span class="ingredient-amount ingredient-amount--empty">—</span>`
         }
-        </li>
-      `
+        <span class="ingredient-name">${item.ingredient}</span>
+      </li>
+    `
     )
     .join("");
 

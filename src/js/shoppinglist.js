@@ -1,190 +1,226 @@
-// src/js/shoppinglist.js 
+// src/js/shoppinglist.js
 
 // --- Config ---
 const HEADER_PARTIAL_URL = "/partials/header.html";
 const FOOTER_PARTIAL_URL = "/partials/footer.html";
 
 const MEAL_PLAN_KEY = "mealPlanV1";
-const EXTRA_ITEMS_KEY = "shoppingExtraV1";
+const SHOPPING_EXTRAS_KEY = "shoppingExtrasV1";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEALS = ["Breakfast", "Lunch", "Dinner"];
 
-// -- Partial Loader -- 
+// --- Partial Loader ---
 async function loadPartial(selector, url) {
-    const container = document.querySelector(selector);
-    if (!container) return;
+  const container = document.querySelector(selector);
+  if (!container) return;
 
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to load partial: ${url}`);
-        }
-        const html = await response.text();
-        container.innerHTML = html;
-    } catch (error) {
-        console.error(error);
-        container.innerHTML =
-            "<p class='error'>Sorry, we couldn’t load this section.</p>";
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load partial: ${url}`);
     }
+    const html = await response.text();
+    container.innerHTML = html;
+  } catch (error) {
+    console.error(error);
+    container.innerHTML =
+      "<p class='error'>Sorry, we couldn’t load this section.</p>";
+  }
 }
 
-// -- Storage Helpers --
+// --- Mobile Nav Toggle (same pattern as main.js) ---
+function initNavToggle() {
+  const toggle = document.querySelector(".nav-toggle");
+  const nav = document.querySelector(".site-nav");
+
+  if (!toggle || !nav) return;
+
+  toggle.addEventListener("click", () => {
+    const isOpen = nav.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", String(isOpen));
+  });
+}
+
+// --- Meal Plan Storage Helpers ---
 function createEmptyPlan() {
-    const plan = {};
-    DAYS.forEach((day) => {
-        MEALS.forEach((meal) => {
-            const key = `${day.toLowerCase()}-${meal.toLowerCase()}`;
-            plan[key] = "";
-        });
+  const plan = {};
+  DAYS.forEach((day) => {
+    MEALS.forEach((meal) => {
+      const key = `${day.toLowerCase()}-${meal.toLowerCase()}`;
+      plan[key] = "";
     });
-    return plan;
+  });
+  return plan;
 }
 
 function loadPlanFromStorage() {
-    try {
-        const raw = localStorage.getItem(MEAL_PLAN_KEY);
-        if (!raw) return createEmptyPlan();
-        const parsed = JSON.parse(raw);
-        return parsed && typeof parsed === "object" ? parsed : createEmptyPlan();
-    } catch (e) {
-        console.error("Error reading meal plan from localStorage", e);
-        return createEmptyPlan();
-    }
+  try {
+    const raw = localStorage.getItem(MEAL_PLAN_KEY);
+    if (!raw) return createEmptyPlan();
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : createEmptyPlan();
+  } catch (e) {
+    console.error("Error reading meal plan from localStorage", e);
+    return createEmptyPlan();
+  }
 }
 
-function loadExtraItemsFromStorage() {
-    try {
-        const raw = localStorage.getItem(EXTRA_ITEMS_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-        console.error("Error reading extra shopping items from localStorage", e);
-        return [];
-    }
-}
-
-const SHOPPING_EXTRAS_KEY = "shoppingExtrasV1";
-
+// --- Shopping Extras Storage (ingredients + manual items) ---
 function loadShoppingExtras() {
   try {
     const raw = localStorage.getItem(SHOPPING_EXTRAS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (e) {
+    console.error("[shopping-list] error reading shopping extras", e);
     return [];
   }
 }
 
-
-function saveExtraItemsToStorage(items) {
-    try {
-        localStorage.setItem(EXTRA_ITEMS_KEY, JSON.stringify(items));
-    } catch (e) {
-        console.error("Error saving extra shopping items", e);
-    }
+function saveShoppingExtras(list) {
+  try {
+    localStorage.setItem(SHOPPING_EXTRAS_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error("[shopping-list] error saving shopping extras", e);
+  }
 }
 
-// -- Transform Plan -> Shopping List --
+// --- Build Recipe Summary From Plan ---
 function buildShoppingListFromPlan(plan) {
-    const resultMap = new Map();
+  const resultMap = new Map();
 
-    DAYS.forEach((day) => {
-        MEALS.forEach((meal) => {
-            const key = `${day.toLowerCase()}-${meal.toLowerCase()}`;
-            const recipeName = (plan[key] || "").trim();
-            if (!recipeName) return;
+  DAYS.forEach((day) => {
+    MEALS.forEach((meal) => {
+      const key = `${day.toLowerCase()}-${meal.toLowerCase()}`;
+      const recipeName = (plan[key] || "").trim();
+      if (!recipeName) return;
 
-            const normalized = recipeName.toLowerCase();
-            if (!resultMap.has(normalized)) {
-                resultMap.set(normalized, {
-                    name: recipeName,
-                    count: 0,
-                    slots: [],
-                });
-            }
-
-            const entry = resultMap.get(normalized);
-            entry.count += 1;
-            entry.slots.push({ day, meal });
+      const normalized = recipeName.toLowerCase();
+      if (!resultMap.has(normalized)) {
+        resultMap.set(normalized, {
+          name: recipeName,
+          count: 0,
+          slots: [],
         });
-    });
+      }
 
-// Convert to array, sort by name
-    return Array.from(resultMap.values()).sort((a, b) =>
-        a.name.localeCompare(b.name)
-    );
+      const entry = resultMap.get(normalized);
+      entry.count += 1;
+      entry.slots.push({ day, meal });
+    });
+  });
+
+  // Convert to array, sort by name
+  return Array.from(resultMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 }
 
-// -- Rendering --
+// --- Group extras (ingredients + manual) ---
+function groupExtras(extras) {
+  const groups = new Map();
+
+  extras.forEach((item) => {
+    const fromTitle = item.fromRecipeTitle || "";
+    const key = fromTitle || "manual";
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        type: fromTitle ? "recipe" : "manual",
+        title: fromTitle || "Other Items",
+        items: [],
+      });
+    }
+
+    groups.get(key).items.push(item);
+  });
+
+  // Sort: recipe groups by title, "Other Items" last
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.type === "manual" && b.type !== "manual") return 1;
+    if (b.type === "manual" && a.type !== "manual") return -1;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+// --- State ---
 let currentPlan = loadPlanFromStorage();
-let extraItems = loadExtraItemsFromStorage();
+let extras = loadShoppingExtras();
 
+// --- Render ---
 function renderShoppingList() {
-    const root = document.querySelector("#shopping-list-root");
-    if (!root) return;
+  const root = document.querySelector("#shopping-list-root");
+  if (!root) return;
 
-    currentPlan = loadPlanFromStorage();
-    extraItems = loadExtraItemsFromStorage();
+  currentPlan = loadPlanFromStorage();
+  extras = loadShoppingExtras();
 
-    const aggregated = buildShoppingListFromPlan(currentPlan);
+  const aggregated = buildShoppingListFromPlan(currentPlan);
 
-    const totalSlots = Object.values(currentPlan).filter(
-        (value) => value && value.trim() !== ""
-    ).length;
+  const totalSlots = Object.values(currentPlan).filter(
+    (value) => value && value.trim() !== ""
+  ).length;
 
-    const summaryHtml = `
+  const ingredientCount = extras.filter((e) => e.type === "ingredient").length;
+  const manualCount = extras.filter((e) => e.type !== "ingredient").length;
+
+  const summaryHtml = `
     <section class="shopping-summary-card">
       <h2>Shopping Summary</h2>
       <p>
         Based on your current weekly meal plan, you have
         <strong>${totalSlots}</strong> planned meal slot${totalSlots === 1 ? "" : "s"
-        }
+    }
         generating
         <strong>${aggregated.length}</strong> unique recipe item${aggregated.length === 1 ? "" : "s"
-        }.
+    }.
       </p>
       <p class="small-note">
-        This list summarizes recipes by name. You can use it alongside your favorite grocery app
-        or paper list.
+        You currently have
+        <strong>${ingredientCount}</strong> ingredient item${ingredientCount === 1 ? "" : "s"
+    }
+        and
+        <strong>${manualCount}</strong> extra item${manualCount === 1 ? "" : "s"}
+        in your shopping list.
       </p>
     </section>
   `;
 
-    const itemsHtml = aggregated.length
-        ? `
+  const itemsHtml = aggregated.length
+    ? `
       <section class="shopping-group-card">
         <h2>Recipes from Meal Plan</h2>
         <ul class="shopping-list">
           ${aggregated
-            .map((item) => {
-                const slotText = item.slots
-                    .map((slot) => `${slot.day} ${slot.meal}`)
-                    .join(", ");
+      .map((item) => {
+        const slotText = item.slots
+          .map((slot) => `${slot.day} ${slot.meal}`)
+          .join(", ");
 
-                return `
+        return `
                 <li class="shopping-item">
                   <div class="shopping-item-main">
                     <input type="checkbox" class="shopping-item-checkbox" />
                     <span class="shopping-item-name">${item.name}</span>
                     ${item.count > 1
-                        ? `<span class="shopping-item-count">×${item.count}</span>`
-                        : ""
-                    }
+            ? `<span class="shopping-item-count">×${item.count}</span>`
+            : ""
+          }
                   </div>
                   <div class="shopping-item-meta">
                     From: ${slotText}
                   </div>
                 </li>
               `;
-            })
-            .join("")}
+      })
+      .join("")}
         </ul>
       </section>
     `
-        : `
+    : `
       <section class="shopping-group-card">
         <h2>Recipes from Meal Plan</h2>
         <p class="small-note">
@@ -193,119 +229,197 @@ function renderShoppingList() {
       </section>
     `;
 
-    const extraItemsHtml = `
-    <section class="shopping-group-card">
-      <h2>Additional Items</h2>
-      <form id="extra-item-form" class="extra-item-form">
-        <label for="extra-item-input" class="sr-only">Add item</label>
-        <input
-          type="text"
-          id="extra-item-input"
-          placeholder="Add an extra item (e.g., milk, eggs, snacks)…"
-          autocomplete="off"
-        />
-        <button type="submit" class="btn-secondary">Add</button>
-      </form>
+  // --- Extras (ingredients from recipes + manual items) ---
+  const groups = groupExtras(extras);
 
-      ${extraItems.length
-            ? `
-            <ul class="shopping-list extra-items-list">
-              ${extraItems
-                .map(
-                    (item) => `
-                <li class="shopping-item" data-id="${item.id}">
-                  <div class="shopping-item-main">
-                    <input
-                      type="checkbox"
-                      class="extra-item-checkbox"
-                      ${item.checked ? "checked" : ""}
-                    />
-                    <span class="shopping-item-name ${item.checked ? "checked" : ""
-                        }">${item.name}</span>
-                    <button type="button" class="extra-item-remove" aria-label="Remove item">
-                      ✕
-                    </button>
-                  </div>
-                </li>
-              `
-                )
-                .join("")}
-            </ul>
-          `
-            : `<p class="small-note">No extra items yet. Add anything you need that isn't tied to a recipe.</p>`
-        }
-    </section>
-  `;
+  const extrasGroupsHtml = groups.length
+    ? groups
+      .map(
+        (group) => `
+        <section class="shopping-group-subcard" data-group="${group.key}">
+          <header class="shopping-group-header">
+            <h3>${group.type === "manual"
+            ? "Other Items"
+            : `Ingredients from: ${group.title}`
+          }</h3>
+            <button
+              type="button"
+              class="shopping-group-clear"
+              data-group="${group.key}"
+            >
+              ${group.type === "manual" ? "Clear Items" : "Clear This Recipe"}
+            </button>
+          </header>
+          <ul class="shopping-list shopping-extras-list">
+            ${group.items
+            .map(
+              (item) => `
+              <li class="shopping-item" data-id="${item.id}">
+                <div class="shopping-item-main">
+                  <input
+                    type="checkbox"
+                    class="extra-item-checkbox"
+                    ${item.checked ? "checked" : ""}
+                  />
+                  <span class="shopping-item-name ${item.checked ? "checked" : ""
+                }">
+                    ${item.name}
+                  </span>
+                  ${item.measure
+                  ? `<span class="shopping-item-measure">${item.measure}</span>`
+                  : ""
+                }
+                  <button
+                    type="button"
+                    class="extra-item-remove"
+                    aria-label="Remove item"
+                  >
+                    ✕
+                  </button>
+                </div>
+                ${item.fromRecipeTitle
+                  ? `<div class="shopping-item-meta">From recipe: ${item.fromRecipeTitle}</div>`
+                  : ""
+                }
+              </li>
+            `
+            )
+            .join("")}
+          </ul>
+        </section>
+      `
+      )
+      .join("")
+    : `<p class="small-note">No ingredients or extra items yet. Add them from a recipe detail page or below.</p>`;
 
-    root.innerHTML = `
+  const extrasCardHtml = `
+  <section class="shopping-group-card">
+    <div class="shopping-group-header">
+      <h2>Ingredients & Extra Items</h2>
+      <button id="clear-all-shopping-btn" class="clear-saved-btn">
+        Clear All Items
+      </button>
+    </div>
+
+    <form id="extra-item-form" class="extra-item-form">
+      <label for="extra-item-input" class="sr-only">Add item</label>
+      <input
+        type="text"
+        id="extra-item-input"
+        placeholder="Add an extra item (e.g., milk, eggs, snacks)…"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn-secondary">Add</button>
+    </form>
+
+    <div class="shopping-extras-container">
+      ${extrasGroupsHtml}
+    </div>
+  </section>
+`;
+
+
+  root.innerHTML = `
     <div class="shopping-layout">
       ${summaryHtml}
       ${itemsHtml}
-      ${extraItemsHtml}
+      ${extrasCardHtml}
     </div>
   `;
 
-    attachShoppingEvents();
+  attachShoppingEvents();
 }
 
+// --- Events ---
 function attachShoppingEvents() {
-    const form = document.querySelector("#extra-item-form");
-    const input = document.querySelector("#extra-item-input");
-    const extraList = document.querySelector(".extra-items-list");
+  const form = document.querySelector("#extra-item-form");
+  const input = document.querySelector("#extra-item-input");
+  const extrasContainer = document.querySelector(".shopping-extras-container");
 
-    if (form && input) {
-        form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const value = input.value.trim();
-            if (!value) return;
+  // Add manual extra item
+  if (form && input) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = input.value.trim();
+      if (!value) return;
 
-            extraItems.push({
-                id: Date.now().toString(),
-                name: value,
-                checked: false,
-            });
+      const current = loadShoppingExtras();
 
-            saveExtraItemsToStorage(extraItems);
-            input.value = "";
-            renderShoppingList();
+      current.push({
+        id: Date.now().toString(),
+        type: "manual",
+        name: value,
+        measure: "",
+        fromRecipeId: null,
+        fromRecipeTitle: null,
+        checked: false,
+      });
+
+      saveShoppingExtras(current);
+      input.value = "";
+      renderShoppingList();
+    });
+  }
+
+  // Handle check / remove / clear-by-group
+  if (extrasContainer) {
+    extrasContainer.addEventListener("click", (event) => {
+      const target = event.target;
+
+      // Clear all in group
+      if (target.classList.contains("shopping-group-clear")) {
+        const groupKey = target.dataset.group;
+        let current = loadShoppingExtras();
+
+        current = current.filter((item) => {
+          const fromTitle = item.fromRecipeTitle || "";
+          const key = fromTitle || "manual";
+          return key !== groupKey;
         });
-    }
 
-    if (extraList) {
-        // Event delegation for checkboxes and remove buttons
-        extraList.addEventListener("click", (event) => {
-            const li = event.target.closest(".shopping-item");
-            if (!li) return;
-            const id = li.dataset.id;
-            if (!id) return;
+        saveShoppingExtras(current);
+        renderShoppingList();
+        return;
+      }
 
-            // Toggle checked
-            if (event.target.classList.contains("extra-item-checkbox")) {
-                extraItems = extraItems.map((item) =>
-                    item.id === id ? { ...item, checked: !item.checked } : item
-                );
-                saveExtraItemsToStorage(extraItems);
-                renderShoppingList();
-            }
+      // Individual items (checkboxes + remove button)
+      const li = target.closest(".shopping-item");
+      if (!li) return;
+      const id = li.dataset.id;
+      if (!id) return;
 
-            // Remove item
-            if (event.target.classList.contains("extra-item-remove")) {
-                extraItems = extraItems.filter((item) => item.id !== id);
-                saveExtraItemsToStorage(extraItems);
-                renderShoppingList();
-            }
-        });
-    }
+      let current = loadShoppingExtras();
+
+      // Toggle checked
+      if (target.classList.contains("extra-item-checkbox")) {
+        current = current.map((item) =>
+          item.id === id ? { ...item, checked: !item.checked } : item
+        );
+        saveShoppingExtras(current);
+        renderShoppingList();
+        return;
+      }
+
+      // Remove single item
+      if (target.classList.contains("extra-item-remove")) {
+        current = current.filter((item) => item.id !== id);
+        saveShoppingExtras(current);
+        renderShoppingList();
+        return;
+      }
+    });
+  }
 }
 
-// -- MAIN INIT --
+// --- MAIN INIT ---
 async function init() {
-    await Promise.all([
-        loadPartial("#site-header", HEADER_PARTIAL_URL),
-        loadPartial("#site-footer", FOOTER_PARTIAL_URL),
-    ]);
+  await Promise.all([
+    loadPartial("#site-header", HEADER_PARTIAL_URL),
+    loadPartial("#site-footer", FOOTER_PARTIAL_URL),
+  ]);
 
-    renderShoppingList();
+  initNavToggle();
+  renderShoppingList();
 }
 
 init();
