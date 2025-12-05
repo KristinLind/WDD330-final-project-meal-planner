@@ -52,7 +52,11 @@ function renderRecipes(recipes) {
   const cardsHTML = recipes
     .map(
       (recipe) => `
-        <article class="recipe-card fade-in">
+        <article
+          class="recipe-card fade-in"
+          draggable="true"
+          data-id="${recipe.id}"
+        >
           <img
             src="${recipe.thumbnail}"
             alt="${recipe.title}"
@@ -83,6 +87,19 @@ function renderRecipes(recipes) {
     .join("");
 
   container.innerHTML = cardsHTML;
+
+  initDragFromResults();
+}
+
+// --- DRAG START ---
+function initDragFromResults() {
+  const cards = document.querySelectorAll(".recipe-card");
+  cards.forEach((card) => {
+    card.addEventListener("dragstart", (event) => {
+      const id = card.dataset.id;
+      event.dataTransfer.setData("text/plain", id);
+    });
+  });
 }
 
 // --- SAVED RECIPES HELPERS ---
@@ -177,7 +194,9 @@ async function init() {
     loadPartial("#site-footer", "/partials/footer.html"),
   ]);
 
-  // 2. Initialize mobile nav
+  initNavToggle();
+  initCartDropZone();   
+
   function initNavToggle() {
     const toggle = document.querySelector(".nav-toggle");
     const nav = document.querySelector(".site-nav");
@@ -190,7 +209,21 @@ async function init() {
     });
   }
 
-  initNavToggle();
+  function initCartDropZone() {
+    const cartZone = document.querySelector("#cart-drop-zone");
+    if (!cartZone) return;
+
+    cartZone.addEventListener("dragover", (event) => {
+      event.preventDefault(); // allow dropping
+    });
+
+    cartZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const recipeId = event.dataTransfer.getData("text/plain");
+      console.log("Dropped recipe id:", recipeId);
+      // later: use recipeId to add to shopping list or saved recipes
+    });
+  }
 
   console.log("[main] init() starting");
 
@@ -260,4 +293,3 @@ async function init() {
 }
 
 init();
-

@@ -5,7 +5,7 @@
     --secondary-accent: #F3C330;/* warm yellow */
     --background-light: #FAF3E0;/* cream background */
     --text-dark: #3C3C3C;/* dark gray */
-    --highlight-green: #88B04B;/* bright green */
+    --highlight-green: #219d9d;/* bright teal-green */
     --deep-green: #1F3C3D;/* dark green border */
     --header-bg: var(--primary-accent);
     --footer-bg: var(--primary-accent);
@@ -55,8 +55,47 @@ nav,
     font-family: "Montserrat", sans-serif;
 }
 
+/* Logo Styles */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: inherit;
+}
+
+.logo-icon {
+    width: 110px;
+    height: 110px;
+    background-color: #f3dec0;
+    border: 8px solid #39cfd0;
+    outline: 6px solid #000000;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.logo-icon img {
+    width: 95%;
+    height: auto;
+    display: block;
+}
+
+.logo-text {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    font-size: 1.7rem;
+    color: var(--deep-green);
+    background-color: var(--background-light);
+    padding: 0.25rem 0.8rem;
+    border-radius: 0.5rem;
+    white-space: nowrap;
+}
+
 h1 {
-    font-size: 2.4rem;
+    font-size: 2rem;
     margin-bottom: 0.5rem;
 }
 h2 {
@@ -68,8 +107,8 @@ h3 {
 }
 
 .intro-text {
-    font-size: 1.1rem;
-    line-height: 1.7;
+    font-size: 1.8rem;
+    line-height: 1.8;
     max-width: 52rem;
     margin-top: 0.75rem;
 }
@@ -79,6 +118,7 @@ header {
     background-color: var(--header-bg);
     color: #ffffff;
     border-bottom: 8px solid var(--deep-green);
+    border-top: 8px solid var(--deep-green);
 }
 .site-header-inner {
   max-width: 1200px;
@@ -95,28 +135,11 @@ header {
     gap: 1.5rem;
 }
 
-.logo {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    color: inherit;
-}
-
-.logo-mark {
-    font-size: 1.8rem;
-    margin-right: 0.4rem;
-}
-
-.logo-text {
-    font-weight: 700;
-    font-size: 1.6rem;
-}
-
 .site-nav a {
     text-decoration: none;
     color: var(--nav-link-color);
     margin-left: 1rem;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 500;
 }
 
@@ -132,6 +155,14 @@ header {
 
 .hero {
     padding: 2rem;
+}
+
+.hero .intro-text {
+    font-size: 1.6rem;
+    line-height: 1.7;
+    font-weight: 500;
+    max-width: 52rem;
+    margin-top: 0.75rem;
 }
 
 .hero-content {
@@ -502,6 +533,14 @@ main {
     padding: 0.4rem 0.8rem;
 }
 
+.saved-recipes-instructions {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.5rem auto 1rem;
+    color: var(--deep-green);
+}
+
 /* Recipe Detail Card */
 .recipe-detail-card {
     background: #ffffff;
@@ -657,14 +696,42 @@ main {
     margin: 2rem auto 1rem;
     padding: 0 2rem;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 0.75rem;
 }
 
+.planner-root {
+    background: var(--highlight-green);
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin: 2rem auto;
+    max-width: 1100px;
+    color: var(--deep-green);
+}
+
 .planner-hint {
-    font-size: 0.9rem;
-    margin: 0;
+    display: inline-block;
+    background-color: #ffffff;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--deep-green);
+    border: 2px solid var(--deep-green);
+    margin: 0.75rem 0 1.5rem;
+    margin-left: calc(1rem + 140px);
+}
+
+.planner-card {
+    background: var(--highlight-green);
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin: 2rem auto;
+    max-width: 1100px;
+    color: #fff;
 }
 
 /* Planner grid */
@@ -896,6 +963,30 @@ main {
         align-items: flex-start;
     }
 }
+@media print {
+
+    header,
+    footer,
+    .nav-toggle,
+    .planner-controls,
+    .shopping-summary-card .small-note:nth-of-type(2) {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .shopping-layout {
+        box-shadow: none;
+        max-width: 100%;
+    }
+
+    .shopping-group-card {
+        border: none;
+    }
+}
 
 @media (max-width: 600px) {
 
@@ -1012,5 +1103,15 @@ main {
 
     .recipe-list {
         padding: 0 0.75rem 3rem;
+    }
+}
+
+@media (max-width: 700px) {
+    .logo-text {
+        font-size: 1.4rem;
+    }
+
+    .site-nav a {
+        font-size: 1rem;
     }
 }

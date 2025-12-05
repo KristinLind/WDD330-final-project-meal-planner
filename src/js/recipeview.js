@@ -260,6 +260,12 @@ function addRecipeIngredientsToShoppingList(recipe) {
   const extras = loadShoppingExtras();
 
   const newItems = (recipe.ingredients || []).map((item) => ({
+    id:
+      (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Date.now().toString() + Math.random().toString(16).slice(2),
+    type: "ingredient",
+    checked: false,
     name: item.ingredient,
     measure: item.measure,
     fromRecipeId: recipe.id,
@@ -271,7 +277,6 @@ function addRecipeIngredientsToShoppingList(recipe) {
 }
 
 // --- SAVE BUTTON ---
-
 function setupSaveButton(recipe) {
   const btn = document.querySelector("#save-recipe-button");
   if (!btn) return;

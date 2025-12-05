@@ -29,7 +29,7 @@ async function loadPartial(selector, url) {
   }
 }
 
-// --- Mobile Nav Toggle (same pattern as main.js) ---
+// --- Mobile Nav Toggle ---
 function initNavToggle() {
   const toggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".site-nav");
@@ -66,7 +66,7 @@ function loadPlanFromStorage() {
   }
 }
 
-// --- Shopping Extras Storage (ingredients + manual items) ---
+// --- Shopping Extras Storage ---
 function loadShoppingExtras() {
   try {
     const raw = localStorage.getItem(SHOPPING_EXTRAS_KEY);
@@ -87,7 +87,7 @@ function saveShoppingExtras(list) {
   }
 }
 
-// --- Build Recipe Summary From Plan ---
+// --- Build Recipe Summary ---
 function buildShoppingListFromPlan(plan) {
   const resultMap = new Map();
 
@@ -118,7 +118,7 @@ function buildShoppingListFromPlan(plan) {
   );
 }
 
-// --- Group extras (ingredients + manual) ---
+// --- Group extras ---
 function groupExtras(extras) {
   const groups = new Map();
 
@@ -146,11 +146,48 @@ function groupExtras(extras) {
   });
 }
 
-// --- State ---
+// --- Consolidated list helper ---
+function buildConsolidatedList(extras) {
+  const map = new Map();
+
+  extras.forEach((item) => {
+    const rawName = (item.name || "").trim();
+    if (!rawName) return;
+
+    const key = rawName.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, {
+        name: rawName,
+        measures: [],
+        fromRecipes: new Set(),
+        type: item.type || "manual",
+      });
+    }
+
+    const entry = map.get(key);
+
+    if (item.measure && item.measure.trim()) {
+      entry.measures.push(item.measure.trim());
+    }
+
+    if (item.fromRecipeTitle) {
+      entry.fromRecipes.add(item.fromRecipeTitle);
+    }
+  });
+
+  return Array.from(map.values())
+    .map((entry) => ({
+      name: entry.name,
+      type: entry.type,
+      measures: entry.measures,
+      fromRecipes: Array.from(entry.fromRecipes),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 let currentPlan = loadPlanFromStorage();
 let extras = loadShoppingExtras();
 
-// --- Render ---
 function renderShoppingList() {
   const root = document.querySelector("#shopping-list-root");
   if (!root) return;
@@ -172,19 +209,22 @@ function renderShoppingList() {
       <h2>Shopping Summary</h2>
       <p>
         Based on your current weekly meal plan, you have
-        <strong>${totalSlots}</strong> planned meal slot${totalSlots === 1 ? "" : "s"
-    }
+        <strong>${totalSlots}</strong> planned meal slot${totalSlots === 1 ? "" : "s"}
         generating
-        <strong>${aggregated.length}</strong> unique recipe item${aggregated.length === 1 ? "" : "s"
-    }.
+        <strong>${aggregated.length}</strong> unique recipe item${aggregated.length === 1 ? "" : "s"}.
       </p>
       <p class="small-note">
         You currently have
-        <strong>${ingredientCount}</strong> ingredient item${ingredientCount === 1 ? "" : "s"
-    }
+        <strong>${ingredientCount}</strong> ingredient item${ingredientCount === 1 ? "" : "s"}
         and
         <strong>${manualCount}</strong> extra item${manualCount === 1 ? "" : "s"}
         in your shopping list.
+      </p>
+      <button id="print-shopping-btn" class="btn-secondary">
+        Print / Save as PDF
+      </button>
+      <p class="small-note">
+        Tip: Use your browser's "Save as PDF" option in the print dialog.
       </p>
     </section>
   `;
@@ -229,7 +269,7 @@ function renderShoppingList() {
       </section>
     `;
 
-  // --- Extras (ingredients from recipes + manual items) ---
+  // --- Extra ingredients ---
   const groups = groupExtras(extras);
 
   const extrasGroupsHtml = groups.length
@@ -293,37 +333,77 @@ function renderShoppingList() {
     : `<p class="small-note">No ingredients or extra items yet. Add them from a recipe detail page or below.</p>`;
 
   const extrasCardHtml = `
-  <section class="shopping-group-card">
-    <div class="shopping-group-header">
-      <h2>Ingredients & Extra Items</h2>
-      <button id="clear-all-shopping-btn" class="clear-saved-btn">
-        Clear All Items
-      </button>
-    </div>
+    <section class="shopping-group-card">
+      <div class="shopping-group-header">
+        <h2>Ingredients & Extra Items</h2>
+        <button id="clear-all-shopping-btn" class="clear-saved-btn">
+          Clear All Items
+        </button>
+      </div>
 
-    <form id="extra-item-form" class="extra-item-form">
-      <label for="extra-item-input" class="sr-only">Add item</label>
-      <input
-        type="text"
-        id="extra-item-input"
-        placeholder="Add an extra item (e.g., milk, eggs, snacks)…"
-        autocomplete="off"
-      />
-      <button type="submit" class="btn-secondary">Add</button>
-    </form>
+      <form id="extra-item-form" class="extra-item-form">
+        <label for="extra-item-input" class="sr-only">Add item</label>
+        <input
+          type="text"
+          id="extra-item-input"
+          placeholder="Add an extra item (e.g., milk, eggs, snacks)…"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn-secondary">Add</button>
+      </form>
 
-    <div class="shopping-extras-container">
-      ${extrasGroupsHtml}
-    </div>
-  </section>
-`;
+      <div class="shopping-extras-container">
+        ${extrasGroupsHtml}
+      </div>
+    </section>
+  `;
 
+  const consolidated = buildConsolidatedList(extras);
+
+  const consolidatedHtml = consolidated.length
+    ? `
+      <section class="shopping-group-card">
+        <div class="shopping-group-header">
+          <h2>Consolidated Shopping List</h2>
+          <p class="small-note">
+            Ingredients with the same name are grouped for easier shopping.
+          </p>
+        </div>
+        <ul class="shopping-list shopping-consolidated-list">
+          ${consolidated
+      .map(
+        (item) => `
+              <li class="shopping-item">
+                <div class="shopping-item-main">
+                  <span class="shopping-item-name">${item.name}</span>
+                  ${item.measures.length
+            ? `<span class="shopping-item-measure">
+                          ${item.measures.join(", ")}
+                        </span>`
+            : ""
+          }
+                </div>
+                ${item.fromRecipes.length
+            ? `<div class="shopping-item-meta">
+                        From: ${item.fromRecipes.join(", ")}
+                      </div>`
+            : ""
+          }
+              </li>
+            `
+      )
+      .join("")}
+        </ul>
+      </section>
+    `
+    : "";
 
   root.innerHTML = `
     <div class="shopping-layout">
       ${summaryHtml}
       ${itemsHtml}
       ${extrasCardHtml}
+      ${consolidatedHtml}
     </div>
   `;
 
@@ -335,6 +415,26 @@ function attachShoppingEvents() {
   const form = document.querySelector("#extra-item-form");
   const input = document.querySelector("#extra-item-input");
   const extrasContainer = document.querySelector(".shopping-extras-container");
+
+  // Print button
+  const printBtn = document.querySelector("#print-shopping-btn");
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      window.print();
+    });
+  }
+
+  // Clear all shopping items
+  const clearAllBtn = document.querySelector("#clear-all-shopping-btn");
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener("click", () => {
+      const ok = confirm("Clear all ingredients and extra items?");
+      if (!ok) return;
+
+      saveShoppingExtras([]);
+      renderShoppingList();
+    });
+  }
 
   // Add manual extra item
   if (form && input) {
