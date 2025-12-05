@@ -10,7 +10,7 @@ export default defineConfig({
                 mealPlanner: "meal-planner.html",
                 shoppingList: "shopping-list.html",
                 recipeDetail: "recipe-detail.html",
-                savedRecipes: resolve(__dirname, "saved-recipes.html"),
+                savedRecipes: "saved-recipes.html"),
             },
         },
     },
